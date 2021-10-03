@@ -12,6 +12,19 @@ use differential_dataflow::{
 use std::{ops::Mul, panic::Location};
 use timely::dataflow::Scope;
 
+#[cfg(not(feature = "timely-next"))]
+use Mul as MulAlias;
+//#[cfg(not(feature = "timely-next"))]
+//use Mul::mul as mul_func;
+
+//type MulAlias<R> = Mul<R>;
+#[cfg(feature = "timely-next")]
+use differential_dataflow::difference::Multiply as MulAlias;
+//#[cfg(feature = "timely-next")]
+//use differential_dataflow::difference::Multiply::multiply as mul_func;
+
+//type MulAlias<R> = differential_dataflow::difference::Multiply<R>;
+
 pub trait JoinArranged<S, K, V, R>
 where
     S: Scope,
@@ -23,13 +36,13 @@ where
     fn semijoin_arranged<R2, T>(
         &self,
         other: &Arranged<S, T>,
-    ) -> Collection<S, (K, V), <R as Mul<R2>>::Output>
+    ) -> Collection<S, (K, V), <R as MulAlias<R2>>::Output>
     where
         S::Timestamp: Lattice,
         K: ExchangeData,
         R2: ExchangeData + Semigroup,
-        R: Mul<R2>,
-        <R as Mul<R2>>::Output: Semigroup,
+        R: MulAlias<R2>,
+        <R as MulAlias<R2>>::Output: Semigroup,
         T: TraceReader<Time = S::Timestamp, Key = K, Val = (), R = R2> + Clone + 'static,
         T::Batch: BatchReader<K, (), S::Timestamp, R2> + 'static,
         T::Cursor: Cursor<K, (), S::Timestamp, R2> + 'static;
@@ -40,7 +53,7 @@ where
         S::Timestamp: Lattice,
         K: ExchangeData,
         R2: ExchangeData + Semigroup,
-        R: Mul<R2, Output = R>,
+        R: MulAlias<R2, Output = R>,
         R: Abelian,
         T: TraceReader<Time = S::Timestamp, Key = K, Val = (), R = R2> + Clone + 'static,
         T::Batch: BatchReader<K, (), S::Timestamp, R2> + 'static,
@@ -58,13 +71,13 @@ where
     fn semijoin_arranged<R2, T>(
         &self,
         other: &Arranged<S, T>,
-    ) -> Collection<S, (K, V), <R as Mul<R2>>::Output>
+    ) -> Collection<S, (K, V), <R as MulAlias<R2>>::Output>
     where
         S::Timestamp: Lattice,
         K: ExchangeData,
         R2: ExchangeData + Semigroup,
-        R: Mul<R2>,
-        <R as Mul<R2>>::Output: Semigroup,
+        R: MulAlias<R2>,
+        <R as MulAlias<R2>>::Output: Semigroup,
         T: TraceReader<Time = S::Timestamp, Key = K, Val = (), R = R2> + Clone + 'static,
         T::Batch: BatchReader<K, (), S::Timestamp, R2> + 'static,
         T::Cursor: Cursor<K, (), S::Timestamp, R2> + 'static,
@@ -87,7 +100,7 @@ where
         S::Timestamp: Lattice,
         K: ExchangeData,
         R2: ExchangeData + Semigroup,
-        R: Mul<R2, Output = R>,
+        R: MulAlias<R2, Output = R>,
         R: Abelian,
         T: TraceReader<Time = S::Timestamp, Key = K, Val = (), R = R2> + Clone + 'static,
         T::Batch: BatchReader<K, (), S::Timestamp, R2> + 'static,
@@ -119,13 +132,13 @@ where
     fn semijoin_arranged<R2, T>(
         &self,
         other: &Arranged<S, T>,
-    ) -> Collection<S, (K, V), <R as Mul<R2>>::Output>
+    ) -> Collection<S, (K, V), <R as MulAlias<R2>>::Output>
     where
         S::Timestamp: Lattice,
         K: ExchangeData,
         R2: ExchangeData + Semigroup,
-        R: Mul<R2>,
-        <R as Mul<R2>>::Output: Semigroup,
+        R: MulAlias<R2>,
+        <R as MulAlias<R2>>::Output: Semigroup,
         T: TraceReader<Time = S::Timestamp, Key = K, Val = (), R = R2> + Clone + 'static,
         T::Batch: BatchReader<K, (), S::Timestamp, R2> + 'static,
         T::Cursor: Cursor<K, (), S::Timestamp, R2> + 'static,
@@ -139,7 +152,7 @@ where
         S::Timestamp: Lattice,
         K: ExchangeData,
         R2: ExchangeData + Semigroup,
-        R: Mul<R2, Output = R>,
+        R: MulAlias<R2, Output = R>,
         R: Abelian,
         T: TraceReader<Time = S::Timestamp, Key = K, Val = (), R = R2> + Clone + 'static,
         T::Batch: BatchReader<K, (), S::Timestamp, R2> + 'static,

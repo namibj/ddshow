@@ -19,10 +19,16 @@ where
     R: Abelian,
 {
     type Output = Self;
-
+    #[cfg(not(feature = "timely-next"))]
     fn negate_named(&self, name: &str) -> Self::Output {
         self.inner
             .map_in_place_named(name, |x| x.2 = -x.2.clone())
+            .as_collection()
+    }
+    #[cfg(feature = "timely-next")]
+    fn negate_named(&self, name: &str) -> Self::Output {
+        self.inner
+            .map_in_place_named(name, |x| x.2 = x.2.clone().negate())
             .as_collection()
     }
 

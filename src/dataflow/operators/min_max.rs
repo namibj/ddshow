@@ -319,7 +319,7 @@ impl Multiply<isize> for DiffDuration {
     type Output = Self;
 
     fn multiply(self, &rhs: &isize) -> Self::Output {
-        Self(self * rhs)
+        self * rhs
     }
 }
 
@@ -451,6 +451,7 @@ where
     }
 }
 
+#[cfg(not(feature = "timely-next"))]
 impl<T> Semigroup for Maybe<T>
 where
     T: Ord + Clone + Debug + for<'a> AddAssign<&'a T> + 'static,
@@ -462,6 +463,24 @@ where
     #[cfg(feature = "timely-next")]
     fn plus_equals(&mut self, rhs: &Self) {
         *self += rhs;
+    }
+}
+
+#[cfg(feature = "timely-next")]
+impl<T> Semigroup for Maybe<T>
+where
+    T: Ord + Clone + Debug + Semigroup + 'static,
+{
+    fn is_zero(&self) -> bool {
+        self.is_nothing()
+    }
+
+    fn plus_equals(&mut self, rhs: &Self) {
+        match (self, rhs) {
+            (Self::Just(lhs), Self::Just(rhs)) => lhs.plus_equals(rhs),
+            (this @ Self::Nothing, Self::Just(rhs)) => *this = Self::Just(rhs.clone()),
+            (Self::Just(_), Self::Nothing) | (Self::Nothing, Self::Nothing) => {}
+        }
     }
 }
 

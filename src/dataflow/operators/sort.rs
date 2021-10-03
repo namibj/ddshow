@@ -149,9 +149,15 @@ where
     input.reduce_named::<_, Vec<(D, R)>, R>("SortByBucket", move |_key, input, output| {
         let mut data = Vec::with_capacity(input.iter().map(|(data, _)| data.len()).sum());
         data.extend(input.iter().flat_map(|(data, diff)| {
-            data.iter()
-                .cloned()
-                .map(move |(data, inner_diff)| (data, diff.clone() * inner_diff))
+            data.iter().cloned().map(move |(data, inner_diff)| {
+                (data, {
+                    #[cfg(not(feature = "timely-next"))]
+                    let result = diff.clone() * inner_diff;
+                    #[cfg(feature = "timely-next")]
+                    let result = diff.clone().multiply(&inner_diff);
+                    result
+                })
+            })
         }));
 
         data.sort_unstable_by_key(|(data, _diff)| key(data));
@@ -162,8 +168,17 @@ where
                 data.remove(idx);
             } else if data[idx].0 == data[idx + 1].0 {
                 let diff = data[idx + 1].1.clone();
-                data[idx].1 += &diff;
-
+                #[cfg(not(feature = "timely-next"))]
+                {
+                    data[idx].1 += &diff;
+                };
+                #[cfg(feature = "timely-next")]
+                {
+                    differential_dataflow::difference::Semigroup::plus_equals(
+                        &mut data[idx].1,
+                        &diff,
+                    );
+                };
                 data.remove(idx + 1);
             } else {
                 idx += 1;

@@ -12,8 +12,10 @@ use ddshow_types::{
     },
     ChannelId, OperatorId, WorkerId,
 };
+#[cfg(not(feature = "timely-next"))]
+use differential_dataflow::difference::DiffPair;
 use differential_dataflow::{
-    difference::{DiffPair, Present},
+    difference::Present,
     operators::{CountTotal, ThresholdTotal},
     AsCollection, Collection, Data,
 };
@@ -85,8 +87,16 @@ where
             .distinct_total_core::<Diff>()
     });
 
+    #[cfg(not(feature = "timely-next"))]
     let create_timestamps = |time| {
         DiffPair::new(
+            Max::new(DiffDuration::new(time)),
+            Min::new(DiffDuration::new(time)),
+        )
+    };
+    #[cfg(feature = "timely-next")]
+    let create_timestamps = |time| {
+        (
             Max::new(DiffDuration::new(time)),
             Min::new(DiffDuration::new(time)),
         )
@@ -100,16 +110,20 @@ where
     )
     .as_collection()
     .count_total()
-    .map_named(
-        "Map: Total Runtime",
-        |(
+    .map_named("Map: Total Runtime", |x| {
+        #[cfg(not(feature = "timely-next"))]
+        let (
             worker,
             DiffPair {
                 element1: Max { value: end },
                 element2: Min { value: start },
             },
-        )| (worker, (start.to_duration(), end.to_duration())),
-    );
+        ) = x;
+        #[cfg(feature = "timely-next")]
+        let (worker, (Max { value: end }, Min { value: start })) = x;
+
+        (worker, (start.to_duration(), end.to_duration()))
+    });
 
     GraphStats {
         workers,

@@ -89,10 +89,10 @@ where
             .explode(|(key, (size, batches))| {
                 let (min, max) = (Min::new(size), Max::new(size));
 
-                Some((key, (1, size, batches, min, max)))
+                Some((key, (1, (size, batches, min, max))))
             })
             .count_total()
-            .map(|(key, (_count, _total, batches, min, max))| {
+            .map(|(key, (_count, (_total, batches, min, max)))| {
                 let stats = ArrangementStats {
                     max_size: max.value as usize,
                     min_size: min.value as usize,

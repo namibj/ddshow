@@ -6,7 +6,9 @@ use crate::dataflow::{
     OperatorId, WorkerId,
 };
 use abomonation_derive::Abomonation;
-use differential_dataflow::{difference::DiffPair, operators::CountTotal, Collection};
+#[cfg(not(feature = "timely-next"))]
+use differential_dataflow::difference::DiffPair;
+use differential_dataflow::{operators::CountTotal, Collection};
 use serde::{Deserialize, Serialize};
 use std::{iter, time::Duration};
 use timely::dataflow::{Scope, Stream};
@@ -84,6 +86,7 @@ where
                     count,
                 },
             )| {
+                #[cfg(not(feature = "timely-next"))]
                 let diff = DiffPair::new(
                     1,
                     DiffPair::new(
@@ -97,13 +100,28 @@ where
                         ),
                     ),
                 );
+                #[cfg(feature = "timely-next")]
+                let diff = (
+                    1,
+                    (
+                        Max::new(DiffDuration::new(max)),
+                        (
+                            Min::new(DiffDuration::new(min)),
+                            (
+                                DiffDuration::new(average),
+                                (DiffDuration::new(total), count as isize),
+                            ),
+                        ),
+                    ),
+                );
 
                 iter::once((operator, diff))
             },
         )
         .count_total()
-        .map(
-            |(
+        .map(|x| {
+            #[cfg(not(feature = "timely-next"))]
+            let (
                 operator,
                 DiffPair {
                     element1: total_workers,
@@ -125,31 +143,42 @@ where
                                 },
                         },
                 },
-            )| {
-                let average = summed_average
-                    .to_duration()
-                    .checked_div(total_workers as u32)
-                    .unwrap_or_else(|| Duration::from_secs(0));
-                let total = summed_total
-                    .to_duration()
-                    .checked_div(total_workers as u32)
-                    .unwrap_or_else(|| Duration::from_secs(0));
+            ) = x;
+            #[cfg(feature = "timely-next")]
+            let (
+                operator,
+                (
+                    total_workers,
+                    (
+                        Max { value: max },
+                        (Min { value: min }, (summed_average, (summed_total, activations))),
+                    ),
+                ),
+            ) = x;
+            let average = summed_average
+                .to_duration()
+                .checked_div(total_workers as u32)
+                .unwrap_or_else(|| Duration::from_secs(0));
+            let total = summed_total
+                .to_duration()
+                .checked_div(total_workers as u32)
+                .unwrap_or_else(|| Duration::from_secs(0));
 
-                let stats = Summation {
-                    max: max.to_duration(),
-                    min: min.to_duration(),
-                    average,
-                    total,
-                    count: activations as usize,
-                };
+            let stats = Summation {
+                max: max.to_duration(),
+                min: min.to_duration(),
+                average,
+                total,
+                count: activations as usize,
+            };
 
-                (operator, stats)
-            },
-        );
+            (operator, stats)
+        });
 
     let aggregated_arrangements = arrangements.as_ref().map(|arrangements| {
         arrangements
             .explode(|((_worker, operator), stats)| {
+                #[cfg(not(feature = "timely-next"))]
                 let diff = DiffPair::new(
                     1,
                     DiffPair::new(
@@ -157,12 +186,21 @@ where
                         DiffPair::new(Min::new(stats.min_size as isize), stats.batches as isize),
                     ),
                 );
+                #[cfg(feature = "timely-next")]
+                let diff = (
+                    1,
+                    (
+                        Max::new(stats.max_size as isize),
+                        (Min::new(stats.min_size as isize), stats.batches as isize),
+                    ),
+                );
 
                 iter::once((operator, diff))
             })
             .count_total()
-            .map(
-                |(
+            .map(|x| {
+                #[cfg(not(feature = "timely-next"))]
+                let (
                     operator,
                     DiffPair {
                         element1: total_workers,
@@ -176,21 +214,25 @@ where
                                     },
                             },
                     },
-                )| {
-                    let average_batches = (batches as usize)
-                        .checked_div(total_workers as usize)
-                        .unwrap_or(0);
+                ) = x;
+                #[cfg(feature = "timely-next")]
+                let (
+                    operator,
+                    (total_workers, (Max { value: max_size }, (Min { value: min_size }, batches))),
+                ) = x;
+                let average_batches = (batches as usize)
+                    .checked_div(total_workers as usize)
+                    .unwrap_or(0);
 
-                    (
-                        operator,
-                        ArrangementStats {
-                            max_size: max_size as usize,
-                            min_size: min_size as usize,
-                            batches: average_batches,
-                        },
-                    )
-                },
-            )
+                (
+                    operator,
+                    ArrangementStats {
+                        max_size: max_size as usize,
+                        min_size: min_size as usize,
+                        batches: average_batches,
+                    },
+                )
+            })
     });
 
     OperatorStatsRelations {

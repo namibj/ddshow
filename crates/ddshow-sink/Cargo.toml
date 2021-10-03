@@ -18,7 +18,8 @@ tracing = ["tracing_dep"]
 byteorder = "1.4.3"
 bytecheck = "0.6.3"
 timely = { version = "0.12.0", default-features = false }
-differential-dataflow = { version = "0.12.0", default-features = false, optional = true }
+#differential-dataflow = { version = "0.12.0", default-features = false, optional = true }
+differential-dataflow = { git = "https://github.com/DataSystemsGroupUT/differential-dataflow.git", rev="3e0d68664633f87a38c8385744ff0ef618ef35ae", optional = true }
 
     [dependencies.rkyv]
     version = "=0.7.3"

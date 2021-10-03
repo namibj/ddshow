@@ -1,4 +1,4 @@
-use super::ReachabilityLogBundle;
+use super::{utils::ReachabilityLogBundle, utils::{Time, XXHasher}};
 use abomonation_derive::Abomonation;
 use std::{collections::HashMap, time::Duration};
 use timely::dataflow::{
